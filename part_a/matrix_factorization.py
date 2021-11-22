@@ -120,15 +120,19 @@ def main():
     val_data = load_valid_csv("../data")
     test_data = load_public_test_csv("../data")
 
-    #####################################################################
-    # TODO:                                                             #
-    # (SVD) Try out at least 5 different k and select the best k        #
-    # using the validation set.                                         #
-    #####################################################################
-    pass
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
+    k_values = [1, 5, 10, 15, 18]
+    accuracies = []
+    for k in k_values:
+        mat = svd_reconstruct(train_matrix, k)
+        acc = sparse_matrix_evaluate(val_data, mat)
+        print("Validation Accuracy for k={}: {}".format(k, acc))
+        accuracies.append(acc)
+
+    opt_k = k_values[np.argmax(accuracies)]
+    print("The optimal k is {} with a validation accuracy of {}".format(opt_k, max(accuracies)))
+    mat = svd_reconstruct(train_matrix, opt_k)
+    test_acc = sparse_matrix_evaluate(test_data, mat)
+    print("Test Accuracy: {}".format(test_acc))
 
     #####################################################################
     # TODO:                                                             #
