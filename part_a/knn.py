@@ -1,5 +1,7 @@
+import numpy as np
 from sklearn.impute import KNNImputer
 from utils import *
+import matplotlib.pyplot as plt
 
 
 def knn_impute_by_user(matrix, valid_data, k):
@@ -12,7 +14,7 @@ def knn_impute_by_user(matrix, valid_data, k):
     :param matrix: 2D sparse matrix
     :param valid_data: A dictionary {user_id: list, question_id: list,
     is_correct: list}
-    :param k: int
+    :param k: intx
     :return: float
     """
     nbrs = KNNImputer(n_neighbors=k)
@@ -33,14 +35,10 @@ def knn_impute_by_item(matrix, valid_data, k):
     :param k: int
     :return: float
     """
-    #####################################################################
-    # TODO:                                                             #
-    # Implement the function as described in the docstring.             #
-    #####################################################################
-    acc = None
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
+    nbrs = KNNImputer(n_neighbors=k)
+    mat = nbrs.fit_transform(matrix.T)
+    acc = sparse_matrix_evaluate(valid_data, mat.T)
+    print("Validation Accuracy: {}".format(acc))
     return acc
 
 
@@ -54,16 +52,36 @@ def main():
     print("Shape of sparse matrix:")
     print(sparse_matrix.shape)
 
-    #####################################################################
-    # TODO:                                                             #
-    # Compute the validation accuracy for each k. Then pick k* with     #
-    # the best performance and report the test accuracy with the        #
-    # chosen k*.                                                        #
-    #####################################################################
-    pass
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
+    k_values = [1, 6, 11, 16, 21, 26]
+    accuracies = []
+    print("==Impute by Users==")
+    for k in k_values:
+        print("When k = {}:".format(k))
+        accuracies.append(knn_impute_by_user(sparse_matrix, val_data, k))
+
+    opt_k = k_values[np.argmax(accuracies)]
+    opt_test_acc = knn_impute_by_user(sparse_matrix, test_data, opt_k)
+    print("The optimal k is {} and has an accuracy of {} on the test dataset".format(opt_k, opt_test_acc))
+
+    plt.plot(k_values, accuracies)
+    plt.xlabel("K Value")
+    plt.ylabel("Accuracy on Validation Set")
+    plt.show()
+
+    accuracies = []
+    print("==Impute by Item==")
+    for k in k_values:
+        print("When k = {}:".format(k))
+        accuracies.append(knn_impute_by_item(sparse_matrix, val_data, k))
+
+    opt_k = k_values[np.argmax(accuracies)]
+    opt_test_acc = knn_impute_by_user(sparse_matrix, test_data, opt_k)
+    print("The optimal k is {} and has an accuracy of {} on the test dataset".format(opt_k, opt_test_acc))
+
+    plt.plot(k_values, accuracies)
+    plt.xlabel("K Value")
+    plt.ylabel("Accuracy on Validation Set")
+    plt.show()
 
 
 if __name__ == "__main__":
