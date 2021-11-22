@@ -35,17 +35,10 @@ def knn_impute_by_item(matrix, valid_data, k):
     :param k: int
     :return: float
     """
-    #####################################################################
-    # TODO:                                                             #
-    # Implement the function as described in the docstring.             #
-    #####################################################################
     nbrs = KNNImputer(n_neighbors=k)
     mat = nbrs.fit_transform(matrix.T)
     acc = sparse_matrix_evaluate(valid_data, mat.T)
     print("Validation Accuracy: {}".format(acc))
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
     return acc
 
 
