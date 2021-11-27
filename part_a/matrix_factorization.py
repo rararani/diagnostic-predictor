@@ -117,25 +117,25 @@ def main():
     test_data = load_public_test_csv("../data")
 
     k_values = [1, 5, 10, 15, 18]
-    # print("=== Singular Value Decomposition ===")
-    # accuracies = []
-    # for k in k_values:
-    #     mat = svd_reconstruct(train_matrix, k)
-    #     acc = sparse_matrix_evaluate(val_data, mat)
-    #     print("Validation Accuracy for k={}: {}".format(k, acc))
-    #     accuracies.append(acc)
-    #
-    # opt_k = k_values[np.argmax(accuracies)]
-    # print("The optimal k is {} with a validation accuracy of {}".format(opt_k, max(accuracies)))
-    # mat = svd_reconstruct(train_matrix, opt_k)
-    # test_acc = sparse_matrix_evaluate(test_data, mat)
-    # print("Test Accuracy: {}".format(test_acc))
+    print("=== Singular Value Decomposition ===")
+    accuracies = []
+    for k in k_values:
+        mat = svd_reconstruct(train_matrix, k)
+        acc = sparse_matrix_evaluate(val_data, mat)
+        print("Validation Accuracy for k={}: {}".format(k, acc))
+        accuracies.append(acc)
+
+    opt_k = k_values[np.argmax(accuracies)]
+    print("The optimal k is {} with a validation accuracy of {}".format(opt_k, max(accuracies)))
+    mat = svd_reconstruct(train_matrix, opt_k)
+    test_acc = sparse_matrix_evaluate(test_data, mat)
+    print("Test Accuracy: {}".format(test_acc))
 
     print("=== ALS ===")
     accuracies = []
 
     num_iterations = 10
-    learning_rate = 0.015
+    learning_rate = 0.01
 
     for k in k_values:
         matrix = als(train_data, k, learning_rate, num_iterations)
@@ -146,7 +146,7 @@ def main():
     opt_k = k_values[np.argmax(accuracies)]
     print("The Optimal K value is {} with an accuracy of {} on the validation set".format(opt_k, max(accuracies)))
 
-    matrix = als(train_data, 5, 0.025, 50)
+    matrix = als(train_data, opt_k, learning_rate, num_iterations)
     print("The test accuracy is {}".format(sparse_matrix_evaluate(test_data, matrix)))
 
     # Initialize u and z
@@ -167,10 +167,6 @@ def main():
     plt.xlabel("Num. Iterations")
     plt.ylabel("Squared Error Loss")
     plt.show()
-
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
 
 
 if __name__ == "__main__":
