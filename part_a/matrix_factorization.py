@@ -1,5 +1,6 @@
 from utils import *
 from scipy.linalg import sqrtm
+import matplotlib.pyplot as plt
 
 import numpy as np
 
@@ -69,12 +70,9 @@ def update_u_z(train_data, lr, u, z):
     :param z: 2D matrix
     :return: (u, z)
     """
-    #####################################################################
-    # TODO:                                                             #
-    # Implement the function as described in the docstring.             #
-    #####################################################################
-    # Randomly select a pair (user_id, question_id).
+
     for j in range(len(train_data["user_id"])):
+        # Randomly select a pair (user_id, question_id).
         i = \
             np.random.choice(len(train_data["question_id"]), 1)[0]
 
@@ -85,9 +83,6 @@ def update_u_z(train_data, lr, u, z):
         u[n] += lr * ((c - np.dot(u[n], z[q])) * z[q])
         z[q] += lr * ((c - np.dot(u[n], z[q])) * u[n])
 
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
     return u, z
 
 
@@ -108,17 +103,10 @@ def als(train_data, k, lr, num_iteration):
     z = np.random.uniform(low=0, high=1 / np.sqrt(k),
                           size=(len(set(train_data["question_id"])), k))
 
-    #####################################################################
-    # TODO:                                                             #
-    # Implement the function as described in the docstring.             #
-    #####################################################################
-    mat = None
     for i in range(num_iteration):
         u, z = update_u_z(train_data, lr, u, z)
     mat = np.matmul(u, z.T)
-    #####################################################################
-    #                       END OF YOUR CODE                            #
-    #####################################################################
+
     return mat
 
 
@@ -143,19 +131,29 @@ def main():
     # test_acc = sparse_matrix_evaluate(test_data, mat)
     # print("Test Accuracy: {}".format(test_acc))
 
-    #####################################################################
-    # TODO:                                                             #
-    # (ALS) Try out at least 5 different k and select the best k        #
-    # using the validation set.                                         #
-    #####################################################################
     print("=== ALS ===")
-    # for k in k_values:
-    #     matrix = als(train_data, k, 0.01, 10)
-    #     acc = sparse_matrix_evaluate(val_data, matrix)
-    #     print(acc)
+    accuracies = []
+    for k in k_values:
+        matrix = als(train_data, k, 0.01, 10)
+        acc = sparse_matrix_evaluate(val_data, matrix)
+        print("Validation accuracy of ALS for k = {}: {}".format(k, acc))
+        accuracies.append(acc)
+
+    opt_k = k_values[np.argmax(accuracies)]
+    print("The Optimal K value is {} with an accuracy of {} on the validation set".format(opt_k, max(accuracies)))
 
     matrix = als(train_data, 5, 0.01, 10)
-    print(sparse_matrix_evaluate(test_data, matrix))
+    print("The test accuracy is {}".format(sparse_matrix_evaluate(test_data, matrix)))
+
+    # Initialize u and z
+    u = np.random.uniform(low=0, high=1 / np.sqrt(opt_k),
+                          size=(len(set(train_data["user_id"])), opt_k))
+    z = np.random.uniform(low=0, high=1 / np.sqrt(k),
+                          size=(len(set(train_data["question_id"])), opt_k))
+
+
+
+
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
