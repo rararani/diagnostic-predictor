@@ -133,8 +133,12 @@ def main():
 
     print("=== ALS ===")
     accuracies = []
+
+    num_iterations = 10
+    learning_rate = 0.015
+
     for k in k_values:
-        matrix = als(train_data, k, 0.01, 10)
+        matrix = als(train_data, k, learning_rate, num_iterations)
         acc = sparse_matrix_evaluate(val_data, matrix)
         print("Validation accuracy of ALS for k = {}: {}".format(k, acc))
         accuracies.append(acc)
@@ -142,7 +146,7 @@ def main():
     opt_k = k_values[np.argmax(accuracies)]
     print("The Optimal K value is {} with an accuracy of {} on the validation set".format(opt_k, max(accuracies)))
 
-    matrix = als(train_data, 5, 0.01, 10)
+    matrix = als(train_data, 5, 0.025, 50)
     print("The test accuracy is {}".format(sparse_matrix_evaluate(test_data, matrix)))
 
     # Initialize u and z
@@ -151,8 +155,18 @@ def main():
     z = np.random.uniform(low=0, high=1 / np.sqrt(k),
                           size=(len(set(train_data["question_id"])), opt_k))
 
+    losses = []
+    x_axis = []
+    for i in range(num_iterations):
+        u, z = update_u_z(train_data, learning_rate, u, z)
+        losses.append(squared_error_loss(train_data, u, z))
+        x_axis.append(i)
 
-
+    plt.plot(x_axis, losses)
+    plt.title("Squared Error Losses vs Iterations for SGD ALS")
+    plt.xlabel("Num. Iterations")
+    plt.ylabel("Squared Error Loss")
+    plt.show()
 
     #####################################################################
     #                       END OF YOUR CODE                            #
