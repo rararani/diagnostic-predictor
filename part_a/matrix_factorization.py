@@ -74,12 +74,17 @@ def update_u_z(train_data, lr, u, z):
     # Implement the function as described in the docstring.             #
     #####################################################################
     # Randomly select a pair (user_id, question_id).
-    i = \
-        np.random.choice(len(train_data["question_id"]), 1)[0]
+    for j in range(len(train_data["user_id"])):
+        i = \
+            np.random.choice(len(train_data["question_id"]), 1)[0]
 
-    c = train_data["is_correct"][i]
-    n = train_data["user_id"][i]
-    q = train_data["question_id"][i]
+        c = train_data["is_correct"][i]     # C[n,m] (C^(i) in notes)
+        n = train_data["user_id"][i]    # can obtain U[n] (U^(i) in notes)
+        q = train_data["question_id"][i]    # can obtain Z[q] (Z^(i) in notes)
+
+        u[n] += lr * ((c - np.dot(u[n], z[q])) * z[q])
+        z[q] += lr * ((c - np.dot(u[n], z[q])) * u[n])
+
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -108,6 +113,9 @@ def als(train_data, k, lr, num_iteration):
     # Implement the function as described in the docstring.             #
     #####################################################################
     mat = None
+    for i in range(num_iteration):
+        u, z = update_u_z(train_data, lr, u, z)
+    mat = np.matmul(u, z.T)
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
@@ -121,25 +129,33 @@ def main():
     test_data = load_public_test_csv("../data")
 
     k_values = [1, 5, 10, 15, 18]
-    accuracies = []
-    for k in k_values:
-        mat = svd_reconstruct(train_matrix, k)
-        acc = sparse_matrix_evaluate(val_data, mat)
-        print("Validation Accuracy for k={}: {}".format(k, acc))
-        accuracies.append(acc)
-
-    opt_k = k_values[np.argmax(accuracies)]
-    print("The optimal k is {} with a validation accuracy of {}".format(opt_k, max(accuracies)))
-    mat = svd_reconstruct(train_matrix, opt_k)
-    test_acc = sparse_matrix_evaluate(test_data, mat)
-    print("Test Accuracy: {}".format(test_acc))
+    # print("=== Singular Value Decomposition ===")
+    # accuracies = []
+    # for k in k_values:
+    #     mat = svd_reconstruct(train_matrix, k)
+    #     acc = sparse_matrix_evaluate(val_data, mat)
+    #     print("Validation Accuracy for k={}: {}".format(k, acc))
+    #     accuracies.append(acc)
+    #
+    # opt_k = k_values[np.argmax(accuracies)]
+    # print("The optimal k is {} with a validation accuracy of {}".format(opt_k, max(accuracies)))
+    # mat = svd_reconstruct(train_matrix, opt_k)
+    # test_acc = sparse_matrix_evaluate(test_data, mat)
+    # print("Test Accuracy: {}".format(test_acc))
 
     #####################################################################
     # TODO:                                                             #
     # (ALS) Try out at least 5 different k and select the best k        #
     # using the validation set.                                         #
     #####################################################################
-    pass
+    print("=== ALS ===")
+    # for k in k_values:
+    #     matrix = als(train_data, k, 0.01, 10)
+    #     acc = sparse_matrix_evaluate(val_data, matrix)
+    #     print(acc)
+
+    matrix = als(train_data, 5, 0.01, 10)
+    print(sparse_matrix_evaluate(test_data, matrix))
     #####################################################################
     #                       END OF YOUR CODE                            #
     #####################################################################
