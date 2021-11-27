@@ -212,7 +212,7 @@ def main():
     plt.legend()
     plt.show()
 
-    theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+    theta, test_beta, test_val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
         train_data,
         test_data,
         learning_rate,
@@ -220,9 +220,23 @@ def main():
     )
 
     # Q2 c) Report final test accuracy
-    print("Test Accuracy: {}".format(val_acc_lst[-1]))
+    print("Test Accuracy: {}".format(test_val_acc_lst[-1]))
 
-    # Q2 d)
+    # Q2 d) Select three questions and plot the curves as functions of theta
+    selected_questions = [13, 14, 15]
+    for question in selected_questions:
+        probabilities = []
+        q_id = val_data["question_id"][question]
+        x_axis = [i for i in range(-5, 6)]
+        for theta in x_axis:
+            probabilities.append(sigmoid(theta-beta[q_id]))
+        plt.plot(x_axis, probabilities, label="Question {}".format(str(question)))
+    plt.ylabel("Probability of correctness (p(c_ij))")
+    plt.xlabel("Theta")
+    plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
+    plt.legend()
+    plt.show()
+
 
 if __name__ == "__main__":
     main()
