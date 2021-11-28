@@ -53,20 +53,6 @@ def main():
     print(sparse_matrix.shape)
 
     k_values = [1, 6, 11, 16, 21, 26]
-    accuracies = []
-    print("==Impute by Users==")
-    for k in k_values:
-        print("When k = {}:".format(k))
-        accuracies.append(knn_impute_by_user(sparse_matrix, val_data, k))
-
-    opt_k = k_values[np.argmax(accuracies)]
-    opt_test_acc = knn_impute_by_user(sparse_matrix, test_data, opt_k)
-    print("The optimal k is {} and has an accuracy of {} on the test dataset".format(opt_k, opt_test_acc))
-
-    plt.plot(k_values, accuracies)
-    plt.xlabel("K Value")
-    plt.ylabel("Accuracy on Validation Set")
-    plt.show()
 
     accuracies = []
     print("==Impute by Item==")
@@ -79,6 +65,7 @@ def main():
     print("The optimal k is {} and has an accuracy of {} on the test dataset".format(opt_k, opt_test_acc))
 
     plt.plot(k_values, accuracies)
+    plt.title("Accuracy vs K-value for Itemized KNN")
     plt.xlabel("K Value")
     plt.ylabel("Accuracy on Validation Set")
     plt.show()
