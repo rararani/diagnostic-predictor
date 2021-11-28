@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 
+np.random.seed(0)
+
 
 def svd_reconstruct(matrix, k):
     """ Given the matrix, perform singular value decomposition
