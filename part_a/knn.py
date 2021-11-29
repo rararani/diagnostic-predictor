@@ -79,6 +79,7 @@ def main():
     print("The optimal k is {} and has an accuracy of {} on the test dataset".format(opt_k, opt_test_acc))
 
     plt.plot(k_values, accuracies)
+    plt.title("Accuracy vs K-value for Itemized KNN")
     plt.xlabel("K Value")
     plt.ylabel("Accuracy on Validation Set")
     plt.show()
