@@ -1,10 +1,8 @@
 from utils import *
 from scipy.linalg import sqrtm
-import matplotlib.pyplot as plt
 
 import numpy as np
-
-np.random.seed(0)
+import matplotlib.pyplot as plt
 
 
 def svd_reconstruct(matrix, k):
@@ -72,24 +70,23 @@ def update_u_z(train_data, lr, u, z):
     :param z: 2D matrix
     :return: (u, z)
     """
-
-    for j in range(len(train_data["user_id"])):
-        # Randomly select a pair (user_id, question_id).
+    # Randomly select a pair (user_id, question_id).
+    for k in range(len(train_data["question_id"])):
         i = \
             np.random.choice(len(train_data["question_id"]), 1)[0]
 
-        c = train_data["is_correct"][i]     # C[n,m] (C^(i) in notes)
-        n = train_data["user_id"][i]    # can obtain U[n] (U^(i) in notes)
-        q = train_data["question_id"][i]    # can obtain Z[q] (Z^(i) in notes)
+        c = train_data["is_correct"][i]     # C_nm
+        n = train_data["user_id"][i]        # n for u_n
+        q = train_data["question_id"][i]    # m for z_m but labelled q
 
-        u[n] += lr * ((c - np.dot(u[n], z[q])) * z[q])
-        z[q] += lr * ((c - np.dot(u[n], z[q])) * u[n])
-
+        error = c - np.dot(u[n], z[q])
+        u[n] = u[n] + lr * error * z[q]
+        z[q] = z[q] + lr * error * u[n]
     return u, z
 
 
 def als(train_data, k, lr, num_iteration):
-    """ Performs ALS algorithm, here we use the iterative solution - SGD 
+    """ Performs ALS algorithm, here we use the iterative solution - SGD
     rather than the direct solution.
 
     :param train_data: A dictionary {user_id: list, question_id: list,
@@ -107,8 +104,8 @@ def als(train_data, k, lr, num_iteration):
 
     for i in range(num_iteration):
         u, z = update_u_z(train_data, lr, u, z)
-    mat = np.matmul(u, z.T)
 
+    mat = np.matmul(u, z.T)
     return mat
 
 
@@ -118,56 +115,55 @@ def main():
     val_data = load_valid_csv("../data")
     test_data = load_public_test_csv("../data")
 
-    k_values = [1, 5, 10, 15, 18]
-    print("=== Singular Value Decomposition ===")
+    # print("=== Singular Value Decomposition ===")
+    k_values = [1, 10, 15, 20, 40]
     accuracies = []
     for k in k_values:
-        mat = svd_reconstruct(train_matrix, k)
-        acc = sparse_matrix_evaluate(val_data, mat)
-        print("Validation Accuracy for k={}: {}".format(k, acc))
+        matrix = svd_reconstruct(train_matrix, k)
+        acc = sparse_matrix_evaluate(val_data, matrix)
         accuracies.append(acc)
+        print(f"k = {k}: Validation accuracy = {acc}")
 
     opt_k = k_values[np.argmax(accuracies)]
-    print("The optimal k is {} with a validation accuracy of {}".format(opt_k, max(accuracies)))
-    mat = svd_reconstruct(train_matrix, opt_k)
-    test_acc = sparse_matrix_evaluate(test_data, mat)
-    print("Test Accuracy: {}".format(test_acc))
+    test_acc = sparse_matrix_evaluate(test_data, svd_reconstruct(train_matrix, opt_k))
+    print(f"The optimal k is {opt_k} with a validation accuracy of {max(accuracies)} and test accuracy of {test_acc}")
 
-    print("=== ALS ===")
-    accuracies = []
+    print("=== ALS ==")
 
     num_iterations = 10
     learning_rate = 0.01
-
+    accuracies = []
     for k in k_values:
-        matrix = als(train_data, k, learning_rate, num_iterations)
-        acc = sparse_matrix_evaluate(val_data, matrix)
-        print("Validation accuracy of ALS for k = {}: {}".format(k, acc))
+        prediction = als(train_data, k, learning_rate, num_iterations)
+        acc = sparse_matrix_evaluate(val_data, prediction)
         accuracies.append(acc)
+        print(f"k = {k}: Validation accuracy = {acc}")
 
     opt_k = k_values[np.argmax(accuracies)]
-    print("The Optimal K value is {} with an accuracy of {} on the validation set".format(opt_k, max(accuracies)))
-
-    matrix = als(train_data, opt_k, learning_rate, num_iterations)
-    print("The test accuracy is {}".format(sparse_matrix_evaluate(test_data, matrix)))
+    test_acc = sparse_matrix_evaluate(test_data, als(train_data, opt_k, learning_rate, num_iterations))
+    print(f"The optimal k is {opt_k} with a validation accuracy of {max(accuracies)} and a test accuracy of {test_acc}")
 
     # Initialize u and z
     u = np.random.uniform(low=0, high=1 / np.sqrt(opt_k),
                           size=(len(set(train_data["user_id"])), opt_k))
-    z = np.random.uniform(low=0, high=1 / np.sqrt(k),
+    z = np.random.uniform(low=0, high=1 / np.sqrt(opt_k),
                           size=(len(set(train_data["question_id"])), opt_k))
 
-    losses = []
-    x_axis = []
+    train_losses = []
+    val_losses = []
     for i in range(num_iterations):
         u, z = update_u_z(train_data, learning_rate, u, z)
-        losses.append(squared_error_loss(train_data, u, z))
-        x_axis.append(i)
+        train_loss = squared_error_loss(train_data, u, z)
+        train_losses.append(train_loss)
+        val_loss = squared_error_loss(val_data, u, z)
+        val_losses.append(val_loss)
 
-    plt.plot(x_axis, losses)
-    plt.title("Squared Error Losses vs Iterations for SGD ALS")
-    plt.xlabel("Num. Iterations")
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Validation Loss")
+    plt.legend(loc="upper right")
+    plt.xlabel("# iterations")
     plt.ylabel("Squared Error Loss")
+    plt.title("Squared Error Loss vs. Iterations")
     plt.show()
 
 
