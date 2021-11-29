@@ -68,6 +68,7 @@ def update_u_z(train_data, lr, u, z, n):
     :param lr: float
     :param u: 2D matrix
     :param z: 2D matrix
+    :para n: # of data points to sample
     :return: (u, z)
     """
     # Randomly select a pair (user_id, question_id).
@@ -95,6 +96,7 @@ def als(train_data, k, lr, num_iteration, n):
     :param k: int
     :param lr: float
     :param num_iteration: int
+    :param n: # of data points to sample
     :return: 2D reconstructed Matrix.
     """
     # Initialize u and z
