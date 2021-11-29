@@ -61,7 +61,7 @@ def main():
 
     opt_k = k_values[np.argmax(accuracies)]
     opt_test_acc = knn_impute_by_user(sparse_matrix, test_data, opt_k)
-    print("The optimal k is {} and has an accuracy of {} on the test dataset".format(opt_k, opt_test_acc))
+    print("The optimal k is {} and has an accuracy of {} on the test dataset.".format(opt_k, opt_test_acc))
 
     plt.plot(k_values, accuracies)
     plt.xlabel("K Value")
