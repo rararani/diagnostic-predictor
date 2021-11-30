@@ -77,7 +77,7 @@ def update_theta_beta(data, lr, theta, beta):
     return theta, beta
 
 
-def irt(data, val_data, lr, iterations):
+def irt(data, val_data, lr, iterations, alt_beta=None, alt_theta=None):
     """ Train IRT model.
 
     You may optionally replace the function arguments to receive a matrix.
@@ -98,6 +98,11 @@ def irt(data, val_data, lr, iterations):
     # Initialize theta and beta.
     theta = np.zeros(N)
     beta = np.zeros(D)
+
+    # If alt_theta and alt_beta are provided
+    if alt_beta and alt_theta:
+        theta = np.zeros(alt_theta)
+        beta = np.zeros(alt_beta)
 
     # Store results in these arrays
     val_acc_lst = []

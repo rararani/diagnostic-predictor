@@ -59,7 +59,7 @@ def squared_error_loss(data, u, z):
     return 0.5 * loss
 
 
-def update_u_z(train_data, lr, u, z, n):
+def update_u_z(train_data, lr, u, z, n, reg):
     """ Return the updated U and Z after applying
     stochastic gradient descent for matrix completion.
 
@@ -81,13 +81,13 @@ def update_u_z(train_data, lr, u, z, n):
         q = train_data["question_id"][i]    # m for z_m but labelled q
 
         error = c - np.dot(u[n], z[q])
-        u[n] = u[n] + lr * error * z[q]
-        z[q] = z[q] + lr * error * u[n]
+        u[n] = u[n] - lr * (error * -z[q] + reg * u[n])
+        z[q] = z[q] - lr * (error * -u[n] + reg * z[q])
 
     return u, z
 
 
-def als(train_data, k, lr, num_iteration, n):
+def als(train_data, k, lr, num_iteration, n, reg):
     """ Performs ALS algorithm, here we use the iterative solution - SGD
     rather than the direct solution.
 
@@ -106,7 +106,7 @@ def als(train_data, k, lr, num_iteration, n):
                           size=(len(set(train_data["question_id"])), k))
 
     for i in range(num_iteration):
-        u, z = update_u_z(train_data, lr, u, z, n)
+        u, z = update_u_z(train_data, lr, u, z, n, reg)
 
     mat = np.matmul(u, z.T)
     return mat
@@ -118,33 +118,34 @@ def main():
     val_data = load_valid_csv("../data")
     test_data = load_public_test_csv("../data")
 
-    print("=== Singular Value Decomposition ===")
+    # print("=== Singular Value Decomposition ===")
     k_values = [1, 6, 11, 16, 21, 26]
-    accuracies = []
-    for k in k_values:
-        matrix = svd_reconstruct(train_matrix, k)
-        acc = sparse_matrix_evaluate(val_data, matrix)
-        accuracies.append(acc)
-        print(f"k = {k}: Validation accuracy = {acc}")
-
-    opt_k = k_values[np.argmax(accuracies)]
-    test_acc = sparse_matrix_evaluate(test_data, svd_reconstruct(train_matrix, opt_k))
-    print(f"The optimal k is {opt_k} with a validation accuracy of {max(accuracies)} and test accuracy of {test_acc}")
+    # accuracies = []
+    # for k in k_values:
+    #     matrix = svd_reconstruct(train_matrix, k)
+    #     acc = sparse_matrix_evaluate(val_data, matrix)
+    #     accuracies.append(acc)
+    #     print(f"k = {k}: Validation accuracy = {acc}")
+    #
+    # opt_k = k_values[np.argmax(accuracies)]
+    # test_acc = sparse_matrix_evaluate(test_data, svd_reconstruct(train_matrix, opt_k))
+    # print(f"The optimal k is {opt_k} with a validation accuracy of {max(accuracies)} and test accuracy of {test_acc}")
 
     print("=== ALS ==")
 
     num_iterations = 10
     learning_rate = 0.01
     n = int(len(train_data["question_id"]) * 0.7)
+    reg = 0.025
     accuracies = []
     for k in k_values:
-        prediction = als(train_data, k, learning_rate, num_iterations, n)
+        prediction = als(train_data, k, learning_rate, num_iterations, n, reg)
         acc = sparse_matrix_evaluate(val_data, prediction)
         accuracies.append(acc)
         print(f"k = {k}: Validation accuracy = {acc}")
 
     opt_k = k_values[np.argmax(accuracies)]
-    test_acc = sparse_matrix_evaluate(test_data, als(train_data, opt_k, learning_rate, num_iterations, n))
+    test_acc = sparse_matrix_evaluate(test_data, als(train_data, opt_k, learning_rate, num_iterations, n, reg))
     print(f"The optimal k is {opt_k} with a validation accuracy of {max(accuracies)} and a test accuracy of {test_acc}")
 
     # Initialize u and z
@@ -156,10 +157,10 @@ def main():
     train_losses = []
     val_losses = []
     for i in range(num_iterations):
-        u, z = update_u_z(train_data, learning_rate, u, z, n)
-        train_loss = squared_error_loss(train_data, u, z)
+        u, z = update_u_z(train_data, learning_rate, u, z, n, reg)
+        train_loss = squared_error_loss(train_data, u, z) / len(train_data["question_id"])
         train_losses.append(train_loss)
-        val_loss = squared_error_loss(val_data, u, z)
+        val_loss = squared_error_loss(val_data, u, z) / len(val_data["question_id"])
         val_losses.append(val_loss)
 
     plt.plot(train_losses, label="Train Loss")
