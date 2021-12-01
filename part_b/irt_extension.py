@@ -9,6 +9,48 @@ best_val_score = float('-inf')
 best_iterations = 0
 best_learning_rate = 0
 
+
+def _load_student_metadata_csv(path, get_student_meta=False):
+    # A helper function to load the csv file.
+    if not os.path.exists(path):
+        raise Exception("The specified path {} does not exist.".format(path))
+    # Initialize the data.
+    data = {
+        "user_id": [],
+        "question_id": [],
+        "is_correct": []
+    }
+    if get_student_meta:
+        data["data_of_birth"] = []
+    # Iterate over the row to fill in the data.
+    with open(path, "r") as csv_file:
+        reader = csv.reader(csv_file)
+        for row in reader:
+            try:
+                if get_student_meta:
+                    data["user_id"].append(int(row[0]))
+                    # data["gender"].append(int(row[1]))
+                    data["data_of_birth"].append(row[2])
+                    # data["premium_pupil"].append(int(row[3]))
+                else:
+                    data["question_id"].append(int(row[0]))
+                    data["user_id"].append(int(row[1]))
+                    data["is_correct"].append(int(row[2]))
+
+            except ValueError:
+                # Pass first row.
+                pass
+            except IndexError:
+                # is_correct might not be available.
+                pass
+    return data
+
+
+def load_student_metadata(root_dir="/data"):
+    path = os.path.join(root_dir, "student_meta.csv")
+    return _load_student_metadata_csv(path, get_student_meta=True)
+
+
 def sigmoid(x):
     """ Apply sigmoid function.
     """
@@ -42,7 +84,7 @@ def neg_log_likelihood(data, theta, beta, alpha):
     return -log_lklihood
 
 
-def update_theta_beta(data, lr, theta, beta):
+def update_theta_beta(data, lr, theta, beta, alpha):
     """ Update theta and beta using gradient descent.
 
     You are using alternating gradient descent. Your update should look:
@@ -57,10 +99,12 @@ def update_theta_beta(data, lr, theta, beta):
     :param lr: float
     :param theta: Vector
     :param beta: Vector
+    :param alpha: Vector
     :return: tuple of vectors
     """
     derivative_wrt_theta = np.zeros(theta.shape[0])
     derivative_wrt_beta = np.zeros(beta.shape[0])
+    derivative_wrt_alpha = np.zeros(alpha.shape[0])
 
     for i, c_ij in enumerate(data['is_correct']):
         # From 2a), theta_i is ith student
@@ -68,15 +112,21 @@ def update_theta_beta(data, lr, theta, beta):
         # From 2b), beta_j is jth question
         beta_j = beta[data['question_id'][i]]
 
+        alpha_i = alpha[data['question_id'][i]]
+
         # Use equation from 2a)
-        derivative_wrt_theta[data['user_id'][i]] += (c_ij - sigmoid(theta_i - beta_j))
-        derivative_wrt_beta[data['question_id'][i]] += (sigmoid(theta_i - beta_j) - c_ij)
+        # TODO: update using alpha
+        derivative_wrt_theta[data['user_id'][i]] += (c_ij - sigmoid(alpha_i*(theta_i - beta_j)))
+        derivative_wrt_beta[data['question_id'][i]] += (sigmoid(alpha_i*(theta_i - beta_j)) - c_ij)
+        derivative_wrt_alpha[data['question_id'][i]] += (c_ij * theta_i) - (c_ij * beta_j) - \
+                                                        (sigmoid(alpha_i * (theta_i - beta_j)) * (theta_i - beta_j))
 
     # Update theta and beta for gradient descent
     theta += (lr * derivative_wrt_theta)
     beta += (lr * derivative_wrt_beta)
+    alpha += (lr * derivative_wrt_alpha)
 
-    return theta, beta
+    return theta, beta, alpha
 
 
 def irt(data, val_data, lr, iterations, alt_beta=None, alt_theta=None):
@@ -135,7 +185,7 @@ def irt(data, val_data, lr, iterations, alt_beta=None, alt_theta=None):
 
         print("NLLK: {} \t Score: {}".format(train_neg_lld, val_score))
 
-        theta, beta = update_theta_beta(data, lr, theta, beta)
+        theta, beta, alpha = update_theta_beta(data, lr, theta, beta, alpha)
 
     # If val_score better than global best_val_score, replace
     if val_score > best_val_score:
@@ -166,9 +216,10 @@ def evaluate(data, theta, beta, alpha):
     return np.sum((data["is_correct"] == np.array(pred))) \
            / len(data["is_correct"])
 
+
 def partition_outliers(student_metadata, train_data):
     """
-
+    Split dataset into categories based on student metadata.
     """
     early = {
         "user_id": [],
@@ -186,18 +237,34 @@ def partition_outliers(student_metadata, train_data):
         "is_correct": []
     }
 
+    early_user_id = []
+    mid_user_id = []
+    late_user_id = []
     # TODO: split user_id into early mid late based on month of birth
-    for i in range(len(student_metadata["user_id"])):
+    for i, user_id in enumerate(student_metadata["user_id"]):
         dob = student_metadata["data_of_birth"][i]
-        birth_month = int(dob[5:7])
-        user_id = student_metadata["user_id"][i]
-        if birth_month <= 4:
-            early["user_id"].append(user_id)
-        elif birth_month <= 8:
-            mid["user_id"].append(user_id)
-        else:
-            late["user_id"].append(user_id)
+        if dob:
+            birth_month = int(dob[5:7])
+            if birth_month <= 4:
+                early_user_id.append(user_id)
+            elif birth_month <= 8:
+                mid_user_id.append(user_id)
+            else:
+                late_user_id.append(user_id)
 
+    for i, user_id in enumerate(train_data["user_id"]):
+        if user_id in early_user_id:
+            early["user_id"].append(train_data["user_id"][i])
+            early["question_id"].append(train_data["question_id"][i])
+            early["is_correct"].append(train_data["is_correct"][i])
+        if user_id in mid_user_id:
+            mid["user_id"].append(train_data["user_id"][i])
+            mid["question_id"].append(train_data["question_id"][i])
+            mid["is_correct"].append(train_data["is_correct"][i])
+        if user_id in late_user_id:
+            late["user_id"].append(train_data["user_id"][i])
+            late["question_id"].append(train_data["question_id"][i])
+            late["is_correct"].append(train_data["is_correct"][i])
     return early, mid, late
 
 
@@ -210,8 +277,7 @@ def main():
 
     # TODO: load student metadata
     student_metadata = load_student_metadata("../data")
-
-    early, mid, late = partition_outliers(student_metadata, train_data)
+    early_born_students, mid_born_students, late_born_students = partition_outliers(student_metadata, train_data)
 
     # Set global variables for dimensions
     global N
@@ -222,16 +288,17 @@ def main():
     # Uncomment section to find best learning rate and best number of iteration
     # Caution: This takes a while, but the best learning rate is 0.0025 with iterations of 50
     # -----------------------------------------------------------------------------------------------------------------
-    # Learning rate typically small, between 0.01 and 0.0001
+    # # Learning rate typically small, between 0.01 and 0.0001
     # learning_rates = [0.01, 0.0075, 0.005, 0.0025, 0.001]
-
-    # Let's try different iterations
+    #
+    # # Let's try different iterations
     # iterations = [10, 25, 50, 75, 100]
-
+    #
     # for lr in learning_rates:
     #     for iteration in iterations:
     #         print("Using Learning rate: {} for {} iterations".format(lr, iteration))
     #         theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(train_data, val_data, lr, iteration)
+    #         print("Accuracy: {}".format(val_acc_lst[-1]))
     #
     # global best_learning_rate
     # global best_iterations
@@ -241,51 +308,66 @@ def main():
     # ))
     # -----------------------------------------------------------------------------------------------------------------
 
-    learning_rate = 0.0025
+    learning_rate = 0.0075
     iterations = 50
 
     theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
-        train_data,
+        early_born_students,
         val_data,
         learning_rate,
         iterations
     )
-    # Q2 c) Report final validation accuracy
-    print("Validation Accuracy: {}".format(val_acc_lst[-1]))
+    print("Validation Accuracy For Early Born Students: {}".format(val_acc_lst[-1]))
 
-    # Q2 b) Plot training curve that shows the training and validation log-likelihoods as a function of iteration
-    plt.plot(np.arange(iterations), train_negative_logs, label="Training")
-    plt.plot(np.arange(iterations), val_negative_logs, label="Validation")
-    plt.ylabel("Training and Validation Log Likelihood")
-    plt.xlabel("Iterations")
-    plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
-    plt.legend()
-    plt.show()
-
-    theta, test_beta, test_val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
-        train_data,
-        test_data,
+    theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+        mid_born_students,
+        val_data,
         learning_rate,
         iterations
     )
+    print("Validation Accuracy For Mid Born Students: {}".format(val_acc_lst[-1]))
 
-    # Q2 c) Report final test accuracy
-    print("Test Accuracy: {}".format(test_val_acc_lst[-1]))
+    theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+        late_born_students,
+        val_data,
+        learning_rate,
+        iterations
+    )
+    print("Validation Accuracy For Late Born Students: {}".format(val_acc_lst[-1]))
 
-    # Q2 d) Select three questions and plot the curves as functions of theta
-    selected_questions = [13, 14, 15]
-    for question in selected_questions:
-        probabilities = []
-        q_id = val_data["question_id"][question]
-        x_axis = [i for i in range(-5, 6)]
-        for theta in x_axis:
-            probabilities.append(sigmoid(theta-beta[q_id]))
-        plt.plot(x_axis, probabilities, label="Question {}".format(str(question)))
-    plt.ylabel("Probability of correctness (p(c_ij))")
-    plt.xlabel("Theta")
-    plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
-    plt.legend()
-    plt.show()
+    # Q2 b) Plot training curve that shows the training and validation log-likelihoods as a function of iteration
+    # plt.plot(np.arange(iterations), train_negative_logs, label="Training")
+    # plt.plot(np.arange(iterations), val_negative_logs, label="Validation")
+    # plt.ylabel("Training and Validation Log Likelihood")
+    # plt.xlabel("Iterations")
+    # plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
+    # plt.legend()
+    # plt.show()
+    #
+    # theta, test_beta, test_val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+    #     train_data,
+    #     test_data,
+    #     learning_rate,
+    #     iterations
+    # )
+    #
+    # # Q2 c) Report final test accuracy
+    # print("Test Accuracy: {}".format(test_val_acc_lst[-1]))
+    #
+    # # Q2 d) Select three questions and plot the curves as functions of theta
+    # selected_questions = [13, 14, 15]
+    # for question in selected_questions:
+    #     probabilities = []
+    #     q_id = val_data["question_id"][question]
+    #     x_axis = [i for i in range(-5, 6)]
+    #     for theta in x_axis:
+    #         probabilities.append(sigmoid(theta-beta[q_id]))
+    #     plt.plot(x_axis, probabilities, label="Question {}".format(str(question)))
+    # plt.ylabel("Probability of correctness (p(c_ij))")
+    # plt.xlabel("Theta")
+    # plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
+    # plt.legend()
+    # plt.show()
 
 
 if __name__ == "__main__":
