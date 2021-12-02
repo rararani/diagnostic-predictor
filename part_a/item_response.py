@@ -233,7 +233,7 @@ def main():
         plt.plot(x_axis, probabilities, label="Question {}".format(str(question)))
     plt.ylabel("Probability of correctness (p(c_ij))")
     plt.xlabel("Theta")
-    plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
+    plt.title("Probability of correctness given theta for three selected questions")
     plt.legend()
     plt.show()
 
