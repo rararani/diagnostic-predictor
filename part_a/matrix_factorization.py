@@ -81,8 +81,8 @@ def update_u_z(train_data, lr, u, z, n, reg):
         q = train_data["question_id"][i]    # m for z_m but labelled q
 
         error = c - np.dot(u[n], z[q])
-        u[n] = u[n] - lr * (error * -z[q] + reg * u[n])
-        z[q] = z[q] - lr * (error * -u[n] + reg * z[q])
+        u[n] = u[n] - lr * (error * -z[q])
+        z[q] = z[q] - lr * (error * -u[n])
 
     return u, z
 
@@ -120,23 +120,22 @@ def main():
 
     # print("=== Singular Value Decomposition ===")
     k_values = [1, 6, 11, 16, 21, 26]
-    # accuracies = []
-    # for k in k_values:
-    #     matrix = svd_reconstruct(train_matrix, k)
-    #     acc = sparse_matrix_evaluate(val_data, matrix)
-    #     accuracies.append(acc)
-    #     print(f"k = {k}: Validation accuracy = {acc}")
-    #
-    # opt_k = k_values[np.argmax(accuracies)]
-    # test_acc = sparse_matrix_evaluate(test_data, svd_reconstruct(train_matrix, opt_k))
-    # print(f"The optimal k is {opt_k} with a validation accuracy of {max(accuracies)} and test accuracy of {test_acc}")
+    accuracies = []
+    for k in k_values:
+        matrix = svd_reconstruct(train_matrix, k)
+        acc = sparse_matrix_evaluate(val_data, matrix)
+        accuracies.append(acc)
+        print(f"k = {k}: Validation accuracy = {acc}")
+
+    opt_k = k_values[np.argmax(accuracies)]
+    test_acc = sparse_matrix_evaluate(test_data, svd_reconstruct(train_matrix, opt_k))
+    print(f"The optimal k is {opt_k} with a validation accuracy of {max(accuracies)} and test accuracy of {test_acc}")
 
     print("=== ALS ==")
 
     num_iterations = 10
     learning_rate = 0.01
     n = int(len(train_data["question_id"]) * 0.7)
-    reg = 0.025
     accuracies = []
     for k in k_values:
         prediction = als(train_data, k, learning_rate, num_iterations, n, reg)
