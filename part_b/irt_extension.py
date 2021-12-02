@@ -78,8 +78,9 @@ def neg_log_likelihood(data, theta, beta, alpha):
         # From 2b), beta_j is jth question
         beta_j = beta[data['question_id'][i]]
 
-        # TODO: add alpha here
-        log_lklihood += (c_ij * (alpha*(theta_i - beta_j))) - np.log(1 + np.exp(alpha*(theta_i - beta_j)))
+        alpha_i = alpha[data['question_id'][i]]
+
+        log_lklihood += (c_ij * (alpha_i*(theta_i - beta_j))) - np.log(1 + np.exp(alpha_i*(theta_i - beta_j)))
 
     return -log_lklihood
 
@@ -129,7 +130,7 @@ def update_theta_beta(data, lr, theta, beta, alpha):
     return theta, beta, alpha
 
 
-def irt(data, val_data, lr, iterations, alt_beta=None, alt_theta=None):
+def irt(data, val_data, lr, iterations, alt_beta=None, alt_theta=None, replace_theta=None):
     """ Train IRT model.
 
     You may optionally replace the function arguments to receive a matrix.
@@ -150,13 +151,17 @@ def irt(data, val_data, lr, iterations, alt_beta=None, alt_theta=None):
     # Initialize theta and beta.
     theta = np.zeros(N)
     beta = np.zeros(D)
-    # TODO: initialize alpha vector
+    # Initialize alpha vector
     alpha = np.zeros(D)
 
     # If alt_theta and alt_beta are provided
     if alt_beta and alt_theta:
         theta = np.zeros(alt_theta)
         beta = np.zeros(alt_beta)
+
+    # If replace_theta given, replace
+    if replace_theta is not None:
+        theta = replace_theta
 
     # Store results in these arrays
     val_acc_lst = []
@@ -193,7 +198,7 @@ def irt(data, val_data, lr, iterations, alt_beta=None, alt_theta=None):
         best_learning_rate = lr
         best_iterations = iterations
 
-    return theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs
+    return theta, beta, alpha, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs
 
 
 def evaluate(data, theta, beta, alpha):
@@ -275,7 +280,7 @@ def main():
     val_data = load_valid_csv("../data")
     test_data = load_public_test_csv("../data")
 
-    # TODO: load student metadata
+    # Load student metadata
     student_metadata = load_student_metadata("../data")
     early_born_students, mid_born_students, late_born_students = partition_outliers(student_metadata, train_data)
 
@@ -285,8 +290,7 @@ def main():
     global D
     D = sparse_matrix.shape[1]  # j = 0, 1, ..., D
 
-    # Uncomment section to find best learning rate and best number of iteration
-    # Caution: This takes a while, but the best learning rate is 0.0025 with iterations of 50
+    # Uncomment section to run 2-parameter IRT on data
     # -----------------------------------------------------------------------------------------------------------------
     # # Learning rate typically small, between 0.01 and 0.0001
     # learning_rates = [0.01, 0.0075, 0.005, 0.0025, 0.001]
@@ -311,38 +315,18 @@ def main():
     learning_rate = 0.0075
     iterations = 50
 
-    theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
-        early_born_students,
-        val_data,
-        learning_rate,
-        iterations
-    )
-    print("Validation Accuracy For Early Born Students: {}".format(val_acc_lst[-1]))
-
-    theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
-        mid_born_students,
-        val_data,
-        learning_rate,
-        iterations
-    )
-    print("Validation Accuracy For Mid Born Students: {}".format(val_acc_lst[-1]))
-
-    theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
-        late_born_students,
-        val_data,
-        learning_rate,
-        iterations
-    )
-    print("Validation Accuracy For Late Born Students: {}".format(val_acc_lst[-1]))
-
-    # Q2 b) Plot training curve that shows the training and validation log-likelihoods as a function of iteration
-    # plt.plot(np.arange(iterations), train_negative_logs, label="Training")
-    # plt.plot(np.arange(iterations), val_negative_logs, label="Validation")
-    # plt.ylabel("Training and Validation Log Likelihood")
-    # plt.xlabel("Iterations")
-    # plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
-    # plt.legend()
-    # plt.show()
+    # Uncomment section to find best learning rate and best number of iteration
+    # Caution: This takes a while, but the best learning rate is 0.0025 with iterations of 50
+    # -----------------------------------------------------------------------------------------------------------------
+    # theta, beta, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+    #     train_data,
+    #     val_data,
+    #     learning_rate,
+    #     iterations
+    # )
+    # # Q2 c) Report final validation accuracy
+    # print("Validation Accuracy: {}".format(val_acc_lst[-1]))
+    # print("Avg Validation Accuracy: {}".format(sum(val_acc_lst)/len(val_acc_lst)))
     #
     # theta, test_beta, test_val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
     #     train_data,
@@ -353,21 +337,86 @@ def main():
     #
     # # Q2 c) Report final test accuracy
     # print("Test Accuracy: {}".format(test_val_acc_lst[-1]))
-    #
-    # # Q2 d) Select three questions and plot the curves as functions of theta
-    # selected_questions = [13, 14, 15]
-    # for question in selected_questions:
-    #     probabilities = []
-    #     q_id = val_data["question_id"][question]
-    #     x_axis = [i for i in range(-5, 6)]
-    #     for theta in x_axis:
-    #         probabilities.append(sigmoid(theta-beta[q_id]))
-    #     plt.plot(x_axis, probabilities, label="Question {}".format(str(question)))
-    # plt.ylabel("Probability of correctness (p(c_ij))")
-    # plt.xlabel("Theta")
-    # plt.title("Training and Validation Log Likelihoods as a Function of Iterations")
-    # plt.legend()
-    # plt.show()
+    # print("Avg Test Accuracy: {}".format(sum(test_val_acc_lst)/len(test_val_acc_lst)))
+    # -----------------------------------------------------------------------------------------------------------------
+
+    early_theta, early_beta, early_alpha, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+        early_born_students,
+        val_data,
+        learning_rate,
+        iterations
+    )
+    print("Validation Accuracy For Early Born Students: {}".format(val_acc_lst[-1]))
+
+    mid_theta, mid_beta, mid_alpha, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+        mid_born_students,
+        val_data,
+        learning_rate,
+        iterations
+    )
+    print("Validation Accuracy For Mid Born Students: {}".format(val_acc_lst[-1]))
+
+    late_theta, late_beta, late_alpha, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+        late_born_students,
+        val_data,
+        learning_rate,
+        iterations
+    )
+    print("Validation Accuracy For Late Born Students: {}".format(val_acc_lst[-1]))
+
+    # Average each theta
+    thetas = [sum(theta) / len(theta) for theta in [early_theta, mid_theta, late_theta]]
+
+    replace_theta = np.zeros(len(student_metadata["user_id"]))
+    for i in range(len(student_metadata["user_id"])):
+        dob = student_metadata["data_of_birth"][i]
+        if dob == "":
+            replace_theta[i] = 0
+        else:
+            birth_month = int(dob[5:7])
+            if birth_month <= 4:
+                replace_theta[i] = thetas[0]
+            elif birth_month <= 8:
+                replace_theta[i] = thetas[1]
+            else:
+                replace_theta[i] = thetas[2]
+
+    # Train IRT, and plot training and validation accuracy as
+    # a function of iterations
+    theta, beta, alpha, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+        train_data,
+        val_data,
+        learning_rate,
+        iterations,
+        replace_theta=replace_theta
+    )
+    print("Validation Accuracy: {}".format(val_acc_lst[-1]))
+
+
+    theta, beta, alpha, val_acc_lst, train_acc_lst, val_negative_logs, train_negative_logs = irt(
+        train_data,
+        test_data,
+        learning_rate,
+        iterations,
+        replace_theta=replace_theta
+    )
+    print("Test Accuracy: {}".format(val_acc_lst[-1]))
+
+    # Select three questions and plot the curves as functions of theta
+    # selected_questions = [13, 14, 15, 16, 18, 30, 35, 60, 100]
+    selected_questions = [16, 30, 100]
+    for question in selected_questions:
+        probabilities = []
+        q_id = val_data["question_id"][question]
+        x_axis = [i for i in range(-5, 6)]
+        for theta in x_axis:
+            probabilities.append(sigmoid(alpha[q_id]*(theta - beta[q_id])))
+        plt.plot(x_axis, probabilities, label="Question {}".format(str(question)))
+    plt.ylabel("Probability of correctness (p(c_ij))")
+    plt.xlabel("Theta")
+    plt.title("Probability of correctness given theta for three selected questions")
+    plt.legend()
+    plt.show()
 
 
 if __name__ == "__main__":
