@@ -32,6 +32,11 @@ def _load_csv(path):
     return data
 
 
+def load_student_metadata(root_dir="/data"):
+    path = os.path.join(root_dir, "student_meta.csv")
+    return _load_csv(path)
+
+
 def load_train_sparse(root_dir="/data"):
     """ Load the training data as a spare matrix representation.
 
